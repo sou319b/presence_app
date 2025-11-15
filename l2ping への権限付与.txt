@@ -1,0 +1,14 @@
+l2ping への権限付与
+sudo setcap 'cap_net_raw+ep' $(which l2ping)
+
+
+
+サービスの再読み込みと再起動
+# 1. systemd に変更を認識させる
+sudo systemctl daemon-reload
+
+# 2. サービスを再起動して、4つのプロセスを起動する
+sudo systemctl restart discord-bots.service
+
+# 3. （確認）サービスが正しく起動しているか確認
+systemctl status discord-bots.service

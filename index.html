@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>イベント局 (在室管理)</title>
+    <style>
+        /* 基本設定 */
+        :root {
+            --color-prof: rgba(255, 0, 0, 0.1);
+            --color-m2: rgba(138, 43, 226, 0.1);
+            --color-b4: rgba(0, 100, 255, 0.1);
+            --border-prof: #f5c6cb;
+            --border-m2: #d6b2f0;
+            --border-b4: #b8daff;
+            --bg-present: #d4edda; /* 緑 */
+            --border-present: #c3e6cb;
+            --text-present: #155724;
+            --bg-absent: #f8f9fa; /* グレー */
+            --border-absent: #dee2e6;
+            --text-absent: #6c757d;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+        }
+        /* ヘッダー */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        #view-toggle {
+            display: flex;
+            background-color: #e9ecef;
+            border-radius: 6px;
+            padding: 4px;
+        }
+        .toggle-btn {
+            background-color: transparent;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: 500;
+            color: #495057;
+        }
+        .toggle-btn.active {
+            background-color: #fff;
+            color: #007bff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* ★修正: 管理ボタンをリンクに変更 */
+        #manage-link {
+            background-color: #6c757d;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+        #manage-link:hover { background-color: #5a6268; }
+
+        /* カテゴリセクション */
+        .category-section {
+            margin-bottom: 20px;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .category-section h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            border-bottom: 2px solid;
+            padding-bottom: 5px;
+        }
+        #Prof\. { background-color: var(--color-prof); border: 1px solid var(--border-prof); }
+        #Prof\. h2 { border-color: var(--border-prof); color: #721c24; }
+        #M2 { background-color: var(--color-m2); border: 1px solid var(--border-m2); }
+        #M2 h2 { border-color: var(--border-m2); color: #581f7f; }
+        #B4 { background-color: var(--color-b4); border: 1px solid var(--border-b4); }
+        #B4 h2 { border-color: var(--border-b4); color: #004085; }
+        /* ★カテゴリの文字色を優先するため、ファイルにあったカテゴリの色分けをこちらに移動 */
+        /* （例：'１年' など、CSS変数で定義されていないカテゴリ名にも対応） */
+        [id="１年"] { background-color: var(--color-b4); border: 1px solid var(--border-b4); }
+        [id="１年"] h2 { border-color: var(--border-b4); color: #004085; }
+        [id="２年"] { background-color: var(--color-m2); border: 1px solid var(--border-m2); }
+        [id="２年"] h2 { border-color: var(--border-m2); color: #581f7f; }
+
+        /* ユーザーカード */
+        .user-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+        }
+        .user-card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 80px;
+            transition: all 0.2s ease;
+        }
+        .user-card-header {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        .user-card-status {
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: 500;
+        }
+        .user-card.present {
+            background-color: var(--bg-present);
+            border-color: var(--border-present);
+        }
+        .user-card.present .user-card-status {
+            color: var(--text-present);
+        }
+        .user-card.absent {
+            background-color: var(--bg-absent);
+            border-color: var(--border-absent);
+        }
+        .user-card.absent .user-card-status {
+            color: var(--text-absent);
+        }
+        /* ★削除: モーダル関連のCSSをすべて削除 */
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>イベント局 (在室管理)</h1>
+        
+        <div id="view-toggle">
+            <button class="toggle-btn active" data-view="all">全員表示</button>
+            <button class="toggle-btn" data-view="present">在室者のみ</button>
+        </div>
+
+        <a href="login.html" id="manage-link">管理</a>
+    </header>
+
+    <main id="dashboard-container"></main>
+
+    <script>
+        const API_URL = '/api/data';
+        // ★削除: ADD_USER_URL, DELETE_USER_URL は不要
+
+        const container = document.getElementById('dashboard-container');
+        // ★削除: モーダル関連のDOMセレクタは不要
+
+        let currentViewMode = 'all'; // 'all' または 'present'
+        let lastFetchedUsers = [];
+        let lastFetchedStatus = {};
+
+        /**
+         * サーバーからデータを取得し、ダッシュボードを再描画する
+         */
+        async function updateDashboard() {
+            try {
+                const response = await fetch(API_URL + '?_=' + new Date().getTime()); // キャッシュ対策
+                if (!response.ok) throw new Error('サーバーからの応答がありません');
+                
+                const data = await response.json();
+                
+                lastFetchedUsers = data.users;
+                lastFetchedStatus = data.status;
+
+                renderDashboard(lastFetchedUsers, lastFetchedStatus);
+
+            } catch (error) {
+                console.error('ダッシュボードの更新に失敗:', error);
+                container.innerHTML = '<p style="color: red;">データの読み込みに失敗しました。</p>';
+            }
+        }
+
+        /**
+         * データに基づいてHTMLを構築する
+         */
+        function renderDashboard(users, statusData) {
+            
+            let usersToDisplay = users;
+            if (currentViewMode === 'present') {
+                usersToDisplay = users.filter(user => {
+                    const statusInfo = statusData[user.mac] || {};
+                    return statusInfo.status === '在室';
+                });
+            }
+
+            const categories = {};
+            usersToDisplay.forEach(user => {
+                if (!categories[user.category]) {
+                    categories[user.category] = [];
+                }
+                categories[user.category].push(user);
+            });
+
+            // カテゴリのキーでソート
+            const sortedCategories = Object.keys(categories).sort();
+            
+            let html = '';
+            
+            if (usersToDisplay.length === 0 && currentViewMode === 'present') {
+                html = '<p style="text-align: center; color: #6c757d;">現在、在室者はいません。</p>';
+            } else if (users.length === 0) {
+                 html = '<p style="text-align: center; color: #6c757d;">ユーザーが登録されていません。管理ページから追加してください。</p>';
+            }
+            
+            for (const categoryName of sortedCategories) {
+                // idに使えるようにカテゴリ名をエスケープ
+                const categoryId = CSS.escape(categoryName);
+                html += `
+                    <section class="category-section" id="${categoryId}">
+                        <h2>${categoryName}</h2>
+                        <div class="user-grid">
+                `;
+
+                for (const user of categories[categoryName]) {
+                    const statusInfo = statusData[user.mac] || { status: '不明', last_seen: 'N/A' };
+                    let statusClass = 'absent';
+                    let statusText = '不在';
+                    
+                    if (statusInfo.status === '在室') {
+                        statusClass = 'present';
+                        statusText = '在室'; 
+                    } else if (statusInfo.status === '不明') {
+                        statusText = '不明';
+                    }
+
+                    html += `
+                        <div class="user-card ${statusClass}">
+                            <div class="user-card-header">
+                                <span>${user.name}</span>
+                            </div>
+                            <div class="user-card-status">${statusText}</div>
+                        </div>
+                    `;
+                }
+                html += `</div></section>`;
+            }
+            container.innerHTML = html;
+        }
+        
+        // ★削除: handleAddUser, handleDeleteUser, renderDeleteList, showManageModal, closeManageModal は不要
+
+        /**
+         * 表示切り替えタブの処理
+         */
+        function handleViewToggle(event) {
+            const clickedButton = event.target.closest('.toggle-btn');
+            if (!clickedButton) return; 
+
+            document.querySelectorAll('#view-toggle .toggle-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            clickedButton.classList.add('active');
+            currentViewMode = clickedButton.dataset.view;
+            renderDashboard(lastFetchedUsers, lastFetchedStatus);
+        }
+
+        // --- イベントリスナーの設定 ---
+        // ★削除: モーダル関連のリスナーは不要
+        
+        // タブ切り替えのリスナー
+        document.getElementById('view-toggle').addEventListener('click', handleViewToggle);
+
+
+        // --- 初期読み込み & 定期更新 ---
+        updateDashboard(); // ページ読み込み時にまず1回実行
+        setInterval(updateDashboard, 2000); // 2秒ごとにデータ自動更新
+    </script>
+
+</body>
+</html>
