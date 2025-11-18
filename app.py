@@ -125,4 +125,4 @@ def delete_user():
 if __name__ == '__main__':
     # 外部からのアクセスを許可するために host='0.0.0.0' を指定
     # ポートは 5000 番を使用 (8000番でも可)
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5001, debug=False)
